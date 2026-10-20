@@ -15,8 +15,8 @@ export type CreatePrIntentNotice = {
 
 export type CommitAreaProps = {
   worktreeId: string | null
-  /** Enables Up/Down recall of past commit messages; omitted in contexts without a worktree. */
-  worktreePath?: string | null
+  /** Enables Up/Down recall of past commit messages. */
+  worktreePath: string | null
   groupId: string | null
   connectionId?: string | null
   repoId?: string | null

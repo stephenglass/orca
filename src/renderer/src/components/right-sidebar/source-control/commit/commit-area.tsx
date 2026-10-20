@@ -39,7 +39,7 @@ const PRIMARY_ICONS: Partial<
 
 export function CommitArea({
   worktreeId,
-  worktreePath = null,
+  worktreePath,
   groupId,
   connectionId,
   repoId,
@@ -133,6 +133,7 @@ export function CommitArea({
   const commitMessageHistory = useCommitMessageHistory({
     worktreeId,
     worktreePath,
+    connectionId,
     commitMessage,
     enabled: showComposer && !isCommitMessageDisabled && !isGenerating,
     isCommitting,

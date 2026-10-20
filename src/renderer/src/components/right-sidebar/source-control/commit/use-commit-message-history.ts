@@ -1,6 +1,5 @@
 import type React from 'react'
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import { getConnectionId } from '@/lib/connection-context'
 import { getRuntimeGitHistory } from '@/runtime/runtime-git-status-client'
 import { GIT_HISTORY_DEFAULT_LIMIT } from '../../../../../../shared/git-history-types'
 import { getWorktreeGitOwnerTarget } from '../../worktree-git-owner-target'
@@ -11,7 +10,7 @@ import {
   normalizeCommitHistoryMessages,
   stepCommitHistory,
   type CommitHistoryDirection,
-  type CommitHistoryNav
+  type CommitHistoryStep
 } from './commit-message-history-navigation'
 
 type HistoryCache = {
@@ -26,6 +25,7 @@ type HistoryCache = {
 export function useCommitMessageHistory({
   worktreeId,
   worktreePath,
+  connectionId,
   commitMessage,
   enabled,
   isCommitting,
@@ -33,6 +33,7 @@ export function useCommitMessageHistory({
 }: {
   worktreeId: string | null
   worktreePath: string | null
+  connectionId: string | null | undefined
   commitMessage: string
   enabled: boolean
   isCommitting: boolean
@@ -44,25 +45,17 @@ export function useCommitMessageHistory({
 } {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const cacheRef = useRef<HistoryCache | null>(null)
-  const navRef = useRef<CommitHistoryNav>(IDLE_COMMIT_HISTORY_NAV)
-  const recalledValueRef = useRef<string | null>(null)
-  const pendingCaretRef = useRef<{ value: string; caret: 'start' | 'end' } | null>(null)
+  const lastStepRef = useRef<CommitHistoryStep | null>(null)
+  const caretPendingRef = useRef(false)
 
   // Why: any change we didn't make (typing, AI fill, post-commit clear, worktree switch) ends the session.
   useEffect(() => {
-    if (navRef.current.index !== -1 && commitMessage !== recalledValueRef.current) {
-      navRef.current = IDLE_COMMIT_HISTORY_NAV
-      recalledValueRef.current = null
+    if (lastStepRef.current && commitMessage !== lastStepRef.current.value) {
+      lastStepRef.current = null
     }
   }, [commitMessage])
 
-  useEffect(() => {
-    navRef.current = IDLE_COMMIT_HISTORY_NAV
-    recalledValueRef.current = null
-    cacheRef.current = null
-  }, [worktreeId])
-
-  // Why: a finished commit adds a message, so the next Up must refetch.
+  // Why: Cmd/Ctrl+Enter commits without blurring the box, so a finished commit must drop the cache too.
   useEffect(() => {
     if (!isCommitting) {
       cacheRef.current = null
@@ -70,15 +63,15 @@ export function useCommitMessageHistory({
   }, [isCommitting])
 
   useLayoutEffect(() => {
-    const pending = pendingCaretRef.current
+    const step = lastStepRef.current
     const textarea = textareaRef.current
-    if (!pending || !textarea || textarea.value !== pending.value) {
+    if (!caretPendingRef.current || !step || !textarea || textarea.value !== step.value) {
       return
     }
-    pendingCaretRef.current = null
-    const position = pending.caret === 'start' ? 0 : pending.value.length
+    caretPendingRef.current = false
+    const position = step.caret === 'start' ? 0 : step.value.length
     textarea.setSelectionRange(position, position)
-    textarea.scrollTop = pending.caret === 'start' ? 0 : textarea.scrollHeight
+    textarea.scrollTop = step.caret === 'start' ? 0 : textarea.scrollHeight
   }, [commitMessage])
 
   const loadMessages = useCallback(
@@ -95,12 +88,7 @@ export function useCommitMessageHistory({
         return null
       }
       const messages = getRuntimeGitHistory(
-        {
-          target,
-          worktreeId,
-          worktreePath,
-          connectionId: getConnectionId(worktreeId) ?? undefined
-        },
+        { target, worktreeId, worktreePath, connectionId: connectionId ?? undefined },
         { limit: GIT_HISTORY_DEFAULT_LIMIT, baseRef: null }
       )
         .then((result) => normalizeCommitHistoryMessages(result.items))
@@ -109,28 +97,15 @@ export function useCommitMessageHistory({
       cacheRef.current = { worktreeId, messages }
       return messages
     },
-    [worktreeId, worktreePath]
+    [connectionId, worktreeId, worktreePath]
   )
 
+  // Why: refetch on every focus so commits made in a terminal or by an agent show up.
   const onFocus = useCallback(() => {
     if (enabled) {
       void loadMessages(true)
     }
   }, [enabled, loadMessages])
-
-  const applyStep = useCallback(
-    (messages: string[], direction: CommitHistoryDirection, currentValue: string) => {
-      const step = stepCommitHistory(navRef.current, messages, direction, currentValue)
-      if (!step) {
-        return
-      }
-      navRef.current = step.nav
-      recalledValueRef.current = step.value
-      pendingCaretRef.current = { value: step.value, caret: step.caret }
-      onCommitMessageChange(step.value)
-    },
-    [onCommitMessageChange]
-  )
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -147,11 +122,12 @@ export function useCommitMessageHistory({
       }
       const { value, selectionStart, selectionEnd } = event.currentTarget
       const direction: CommitHistoryDirection = event.key === 'ArrowUp' ? 'older' : 'newer'
+      const nav = lastStepRef.current?.nav ?? IDLE_COMMIT_HISTORY_NAV
       const atEdge =
         direction === 'older'
           ? isCaretOnFirstLine(value, selectionStart, selectionEnd)
           : isCaretOnLastLine(value, selectionStart, selectionEnd)
-      if (!atEdge || (direction === 'newer' && navRef.current.index === -1)) {
+      if (!atEdge || (direction === 'newer' && nav.index === -1)) {
         return
       }
       const messages = loadMessages(false)
@@ -162,12 +138,18 @@ export function useCommitMessageHistory({
       const textarea = event.currentTarget
       void messages.then((list) => {
         // Why: the fetch may still be in flight; drop the step if the user typed or left meanwhile.
-        if (textarea.value === value && document.activeElement === textarea) {
-          applyStep(list, direction, value)
+        if (textarea.value !== value || document.activeElement !== textarea) {
+          return
+        }
+        const step = stepCommitHistory(nav, list, direction, value)
+        if (step) {
+          lastStepRef.current = step
+          caretPendingRef.current = true
+          onCommitMessageChange(step.value)
         }
       })
     },
-    [applyStep, enabled, loadMessages]
+    [enabled, loadMessages, onCommitMessageChange]
   )
 
   return { textareaRef, onFocus, onKeyDown }

@@ -36,7 +36,10 @@ export function normalizeCommitHistoryMessages(items: readonly GitHistoryItem[])
   return messages
 }
 
-/** The next recalled value, or null when the key should keep its native caret movement. */
+/**
+ * The next recalled value, or null when the key should keep its native caret movement.
+ * Unlike native-chat prompt recall, this restores the typed draft at the end (VS Code commit-box parity).
+ */
 export function stepCommitHistory(
   nav: CommitHistoryNav,
   messages: readonly string[],
@@ -59,8 +62,9 @@ export function stepCommitHistory(
     return null
   }
   const index = nav.index - 1
-  if (index === -1) {
-    return { nav: { index: -1, draft: nav.draft }, value: nav.draft, caret: 'end' }
+  return {
+    nav: { index, draft: nav.draft },
+    value: index === -1 ? nav.draft : messages[index],
+    caret: 'end'
   }
-  return { nav: { index, draft: nav.draft }, value: messages[index], caret: 'end' }
 }
