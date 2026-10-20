@@ -132,6 +132,7 @@ export function SourceControlCommitSurface({
   return (
     <CommitArea
       worktreeId={activeWorktreeId}
+      worktreePath={worktreePath}
       connectionId={activeConnectionId}
       repoId={activeRepo.id}
       launchPlatform={activeSourceControlLaunchPlatform}

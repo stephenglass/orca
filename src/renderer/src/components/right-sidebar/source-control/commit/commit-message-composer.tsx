@@ -9,6 +9,9 @@ export function CommitMessageComposer({
   commitMessage,
   disabled,
   onCommitMessageChange,
+  textareaRef,
+  onFocus,
+  onKeyDown,
   describedBy,
   showGenerate,
   isGenerating,
@@ -21,6 +24,9 @@ export function CommitMessageComposer({
   commitMessage: string
   disabled: boolean
   onCommitMessageChange: (message: string) => void
+  textareaRef?: React.Ref<HTMLTextAreaElement>
+  onFocus?: () => void
+  onKeyDown?: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void
   describedBy: string
   showGenerate: boolean
   isGenerating: boolean
@@ -32,10 +38,13 @@ export function CommitMessageComposer({
   return (
     <div className="relative">
       <textarea
+        ref={textareaRef}
         rows={rows}
         value={commitMessage}
         disabled={disabled}
         onChange={(e) => onCommitMessageChange(e.target.value)}
+        onFocus={onFocus}
+        onKeyDown={onKeyDown}
         placeholder={translate('auto.components.right.sidebar.SourceControl.0d0a8359d3', 'Message')}
         aria-label={translate(
           'auto.components.right.sidebar.SourceControl.b94112eb9e',
