@@ -9,6 +9,7 @@ import {
 import type { FileExplorerOperationOwner } from './file-explorer-types'
 import { useFileExplorerDragEdgeScroll } from './useFileExplorerDragEdgeScroll'
 import { useFileExplorerMoveDrop } from './useFileExplorerMoveDrop'
+import type { FileExplorerMoveConfirmRequest } from './useFileExplorerMoveDrop'
 import { useFileExplorerDragExpand } from './useFileExplorerDragExpand'
 
 type UseFileExplorerDragDropParams = {
@@ -24,7 +25,10 @@ type UseFileExplorerDragDropParams = {
 }
 
 type UseFileExplorerDragDropResult = {
-  handleMoveDrop: (sourcePath: string, destDir: string) => void
+  handleMoveDrop: (sourcePaths: string[], destDir: string) => void
+  moveConfirmRequest: FileExplorerMoveConfirmRequest | null
+  confirmMove: (dontAskAgain: boolean) => void
+  cancelMove: () => void
   handleDragExpandDir: (dirPath: string) => void
   dropTargetDir: string | null
   setDropTargetDir: (dir: string | null) => void
@@ -108,7 +112,7 @@ export function useFileExplorerDragDrop({
     }
   }, [stopAndClearDragState, stopDragEdgeScroll])
 
-  const handleMoveDrop = useFileExplorerMoveDrop({
+  const { handleMoveDrop, moveConfirmRequest, confirmMove, cancelMove } = useFileExplorerMoveDrop({
     worktreePath,
     activeWorktreeId,
     refreshDir,
@@ -195,9 +199,7 @@ export function useFileExplorerDragDrop({
             toast.error(getWorkspaceFileDragRejectionMessage(dragPaths.reason))
             return
           }
-          for (const sourcePath of dragPaths.paths) {
-            handleMoveDrop(sourcePath, displayRootPath)
-          }
+          handleMoveDrop(dragPaths.paths, displayRootPath)
         }
       },
       [displayRootPath, handleMoveDrop, stopDragEdgeScroll, clearNativeDragState]
@@ -211,6 +213,9 @@ export function useFileExplorerDragDrop({
   })
   return {
     handleMoveDrop,
+    moveConfirmRequest,
+    confirmMove,
+    cancelMove,
     handleDragExpandDir,
     dropTargetDir,
     setDropTargetDir,

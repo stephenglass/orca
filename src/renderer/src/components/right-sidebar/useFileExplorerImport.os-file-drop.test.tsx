@@ -190,7 +190,7 @@ describe('file explorer OS file drops', () => {
 })
 
 describe('internal explorer row drags under the OS-drop owner', () => {
-  function DraggableRow({ onMoveDrop }: { onMoveDrop: (source: string, dir: string) => void }) {
+  function DraggableRow({ onMoveDrop }: { onMoveDrop: (sources: string[], dir: string) => void }) {
     const handlers = useFileExplorerRowDrag({
       rowDropDir: '/repo/app/src',
       isDirectory: true,
@@ -211,7 +211,11 @@ describe('internal explorer row drags under the OS-drop owner', () => {
       />
     )
   }
-  function ExplorerWithRow({ onMoveDrop }: { onMoveDrop: (source: string, dir: string) => void }) {
+  function ExplorerWithRow({
+    onMoveDrop
+  }: {
+    onMoveDrop: (sources: string[], dir: string) => void
+  }) {
     const ownerRef = useFileExplorerImport({
       ...SCOPE_B,
       refreshDir,
@@ -232,7 +236,7 @@ describe('internal explorer row drags under the OS-drop owner', () => {
       'move'
     )
     drag(view.getByTestId('row'), 'drop', [WORKSPACE_FILE_PATH_MIME])
-    expect(onMoveDrop).toHaveBeenCalledWith('/repo/app/moved.ts', '/repo/app/src')
+    expect(onMoveDrop).toHaveBeenCalledWith(['/repo/app/moved.ts'], '/repo/app/src')
     expect(mocks.prepare).not.toHaveBeenCalled()
     expect(mocks.importPaths).not.toHaveBeenCalled()
   })

@@ -173,6 +173,23 @@ export const getGeneralNavigationSearchEntries = createLocalizedCatalog(() => [
   },
   {
     title: translate(
+      'auto.components.settings.GeneralPane.confirm_explorer_drag_drop',
+      'Confirm before moving files in the Explorer'
+    ),
+    description: translate(
+      'auto.components.settings.GeneralPane.confirm_explorer_drag_drop_description',
+      'Ask before moving a file or folder by dragging it in the Explorer.'
+    ),
+    keywords: [
+      ...translateSearchKeyword('auto.components.settings.general.search.explorer', 'explorer'),
+      ...translateSearchKeyword('auto.components.settings.general.search.drag', 'drag'),
+      ...translateSearchKeyword('auto.components.settings.general.search.drop', 'drop'),
+      ...translateSearchKeyword('auto.components.settings.general.search.move', 'move'),
+      ...translateSearchKeyword('auto.components.settings.general.search.9f8558233a', 'confirm')
+    ]
+  },
+  {
+    title: translate(
       'auto.components.settings.GeneralPane.confirm_running_terminal_close',
       'Confirm before closing running terminals'
     ),

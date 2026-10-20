@@ -17,7 +17,7 @@ type UseFileExplorerRowDragParams = {
   onDragExpandDir: (dirPath: string) => void
   onNativeDragTargetChange: (dir: string | null) => void
   onNativeDragExpandDir: (dirPath: string) => void
-  onMoveDrop: (sourcePath: string, destDir: string) => void
+  onMoveDrop: (sourcePaths: string[], destDir: string) => void
 }
 
 type RowDragHandlers = {
@@ -170,9 +170,7 @@ export function useFileExplorerRowDrag({
         toast.error(getWorkspaceFileDragRejectionMessage(dragPaths.reason))
         return
       }
-      for (const sourcePath of dragPaths.paths) {
-        onMoveDrop(sourcePath, rowDropDir)
-      }
+      onMoveDrop(dragPaths.paths, rowDropDir)
     },
     [
       rowDropDir,
