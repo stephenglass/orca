@@ -30,6 +30,7 @@ function baseProps(overrides: Partial<PrimaryActionInputs> = {}) {
   const inputs = buildInputs(overrides)
   return {
     worktreeId: 'wt-1',
+    worktreePath: null,
     groupId: 'group-1',
     commitMessage: 'feat: add commit area',
     commitError: null as string | null,

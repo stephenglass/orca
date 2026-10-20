@@ -14,6 +14,7 @@ import type { CommitAreaProps } from './commit-area-types'
 import { CommitMessageComposer } from './commit-message-composer'
 import { CommitNotices } from './commit-notices'
 import { getCommitMessageTextareaRows } from './commit-message-rows'
+import { useCommitMessageHistory } from './use-commit-message-history'
 import type { PrimaryAction } from '../../source-control-primary-action'
 import { getSourceControlRecoveryFailureKindLabel } from '../sync/push-recovery'
 
@@ -38,6 +39,7 @@ const PRIMARY_ICONS: Partial<
 
 export function CommitArea({
   worktreeId,
+  worktreePath,
   groupId,
   connectionId,
   repoId,
@@ -128,6 +130,15 @@ export function CommitArea({
   ]
     .filter(Boolean)
     .join(' ')
+  const commitMessageHistory = useCommitMessageHistory({
+    worktreeId,
+    worktreePath,
+    connectionId,
+    commitMessage,
+    enabled: showComposer && !isCommitMessageDisabled && !isGenerating,
+    isCommitting,
+    onCommitMessageChange
+  })
 
   // Why: config errors are surfaced by the generation dialog, so entry-point visibility only follows the feature toggle.
   // Why: Create PR intent owns generation, so a second composer spinner would stack on the primary spinner.
@@ -214,6 +225,9 @@ export function CommitArea({
           commitMessage={commitMessage}
           disabled={isCommitMessageDisabled}
           onCommitMessageChange={onCommitMessageChange}
+          textareaRef={commitMessageHistory.textareaRef}
+          onFocus={commitMessageHistory.onFocus}
+          onKeyDown={commitMessageHistory.onKeyDown}
           describedBy={describedBy}
           showGenerate={showGenerate}
           isGenerating={isGenerating}
