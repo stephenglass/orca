@@ -189,6 +189,34 @@ export function GeneralPane({
         </SearchableSetting>
         <SearchableSetting
           title={translate(
+            'auto.components.settings.GeneralPane.confirm_explorer_drag_drop',
+            'Confirm before moving files in the Explorer'
+          )}
+          description={translate(
+            'auto.components.settings.GeneralPane.confirm_explorer_drag_drop_description',
+            'Ask before moving a file or folder by dragging it in the Explorer.'
+          )}
+          keywords={['explorer', 'drag', 'drop', 'move', 'confirm']}
+        >
+          <SettingsSwitchRow
+            label={translate(
+              'auto.components.settings.GeneralPane.confirm_explorer_drag_drop',
+              'Confirm before moving files in the Explorer'
+            )}
+            description={translate(
+              'auto.components.settings.GeneralPane.confirm_explorer_drag_drop_description',
+              'Ask before moving a file or folder by dragging it in the Explorer.'
+            )}
+            checked={settings.confirmExplorerDragAndDrop ?? true}
+            onChange={() =>
+              updateSettings({
+                confirmExplorerDragAndDrop: !(settings.confirmExplorerDragAndDrop ?? true)
+              })
+            }
+          />
+        </SearchableSetting>
+        <SearchableSetting
+          title={translate(
             'auto.components.settings.GeneralPane.confirm_running_terminal_close',
             'Confirm before closing running terminals'
           )}

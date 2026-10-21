@@ -24,7 +24,7 @@ type UseFileExplorerDragDropParams = {
 }
 
 type UseFileExplorerDragDropResult = {
-  handleMoveDrop: (sourcePath: string, destDir: string) => void
+  handleMoveDrop: (sourcePaths: string[], destDir: string) => void
   handleDragExpandDir: (dirPath: string) => void
   dropTargetDir: string | null
   setDropTargetDir: (dir: string | null) => void
@@ -195,9 +195,7 @@ export function useFileExplorerDragDrop({
             toast.error(getWorkspaceFileDragRejectionMessage(dragPaths.reason))
             return
           }
-          for (const sourcePath of dragPaths.paths) {
-            handleMoveDrop(sourcePath, displayRootPath)
-          }
+          handleMoveDrop(dragPaths.paths, displayRootPath)
         }
       },
       [displayRootPath, handleMoveDrop, stopDragEdgeScroll, clearNativeDragState]

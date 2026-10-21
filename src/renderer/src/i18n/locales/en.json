@@ -7793,7 +7793,9 @@
           "5cb5475664": "Confirm before closing pinned tabs",
           "36b2a5dc6d": "Show a confirmation dialog before a pinned tab is closed.",
           "projectRuntime": "Project Runtime",
-          "projectRuntimeDescription": "Default runtime for local Windows projects that do not override it."
+          "projectRuntimeDescription": "Default runtime for local Windows projects that do not override it.",
+          "confirm_explorer_drag_drop": "Confirm before moving files in the Explorer",
+          "confirm_explorer_drag_drop_description": "Ask before moving a file or folder by dragging it in the Explorer."
         },
         "GeneralSupportSection": {
           "af7d9f4396": "Thanks for the support!",
@@ -10434,7 +10436,10 @@
             "command": "command",
             "confirm": "confirm",
             "close": "close",
-            "omp": "OMP"
+            "omp": "OMP",
+            "drag": "drag",
+            "drop": "drop",
+            "move": "move"
           }
         },
         "git": {
@@ -14771,6 +14776,14 @@
             "scanning": "Scanning {{value0}}",
             "reading": "Reading {{value0}} files",
             "scanned": "Scanned {{value0}}"
+          },
+          "useFileExplorerMoveDrop": {
+            "move": "Move",
+            "move_single": "Are you sure you want to move '{{name}}' into '{{target}}'?",
+            "hidden_single": "...1 additional file not shown",
+            "hidden_several": "...{{hiddenCount}} additional files not shown",
+            "move_several": "Are you sure you want to move the following {{fileCount}} files into '{{target}}'?",
+            "dont_ask_again": "Do not ask me again"
           }
         }
       },

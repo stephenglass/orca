@@ -212,6 +212,20 @@ export async function waitForActiveWorktree(page: Page, timeoutMs = 30_000): Pro
 }
 
 /** Get all worktree IDs across all repos. */
+/** Get the active worktree's root path. */
+export async function getActiveWorktreePath(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const state = window.__store!.getState()
+    const worktree = Object.values(state.worktreesByRepo)
+      .flat()
+      .find((entry) => entry.id === state.activeWorktreeId)
+    if (!worktree) {
+      throw new Error('Active worktree not found')
+    }
+    return worktree.path
+  })
+}
+
 export async function getAllWorktreeIds(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const store = window.__store
