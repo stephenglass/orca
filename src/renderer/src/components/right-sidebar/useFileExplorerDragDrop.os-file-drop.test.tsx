@@ -14,6 +14,10 @@ vi.mock('./useFileExplorerDragEdgeScroll', () => ({
   })
 }))
 
+vi.mock('@/components/confirmation-dialog-context', () => ({
+  useConfirmationDialog: () => vi.fn().mockResolvedValue(true)
+}))
+
 const refreshDir = vi.fn().mockResolvedValue(undefined)
 
 function Explorer(): React.JSX.Element {

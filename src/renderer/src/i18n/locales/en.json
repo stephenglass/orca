@@ -14777,14 +14777,13 @@
             "reading": "Reading {{value0}} files",
             "scanned": "Scanned {{value0}}"
           },
-          "FileExplorerMoveConfirmDialog": {
-            "move_several": "Are you sure you want to move the following {{fileCount}} files into '{{target}}'?",
+          "useFileExplorerMoveDrop": {
+            "move": "Move",
             "move_single": "Are you sure you want to move '{{name}}' into '{{target}}'?",
             "hidden_single": "...1 additional file not shown",
             "hidden_several": "...{{hiddenCount}} additional files not shown",
-            "dont_ask_again": "Do not ask me again",
-            "cancel": "Cancel",
-            "move": "Move"
+            "move_several": "Are you sure you want to move the following {{fileCount}} files into '{{target}}'?",
+            "dont_ask_again": "Do not ask me again"
           }
         }
       },

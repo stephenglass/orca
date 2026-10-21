@@ -10,7 +10,6 @@ import type { Repo } from '../../../../shared/repo-types'
 import type { RightSidebarExplorerView } from '../../../../shared/ui-chrome-types'
 import { FileExplorerTreeStatus } from './FileExplorerTreeStatus'
 import { FileExplorerVirtualRows } from './FileExplorerVirtualRows'
-import { FileExplorerMoveConfirmDialog } from './FileExplorerMoveConfirmDialog'
 import { canShowAddAsProjectAction } from './file-explorer-add-project-action'
 import type { FileExplorerNameFilterProjectionSource } from './file-explorer-name-filter-projection'
 import type { FileExplorerRowProjection } from './file-explorer-row-projection'
@@ -87,9 +86,6 @@ export function FileExplorerFilesTreePane({
   const { handleClick, handleDoubleClick, handleWheelCapture } = handlers
   const {
     handleMoveDrop,
-    moveConfirmRequest,
-    confirmMove,
-    cancelMove,
     handleDragExpandDir,
     dropTargetDir,
     setDropTargetDir,
@@ -139,122 +135,111 @@ export function FileExplorerFilesTreePane({
       : undefined
 
   return (
-    <>
-      <ScrollArea
-        className={cn(
-          // Why: Radix ScrollArea.Root hard-sets inline `position: relative`,
-          // defeating `absolute`; size by height so the viewport can overflow.
-          'h-full min-h-0',
-          explorerView !== 'files' && 'pointer-events-none invisible',
-          isRootDragOver &&
-            explorerView === 'files' &&
-            !(dragSourcePath && dirname(dragSourcePath) === displayRootPath) &&
-            'bg-border',
-          isNativeDragOver && explorerView === 'files' && !nativeDropTargetDir && 'bg-border'
+    <ScrollArea
+      className={cn(
+        // Why: Radix ScrollArea.Root hard-sets inline `position: relative`,
+        // defeating `absolute`; size by height so the viewport can overflow.
+        'h-full min-h-0',
+        explorerView !== 'files' && 'pointer-events-none invisible',
+        isRootDragOver &&
+          explorerView === 'files' &&
+          !(dragSourcePath && dirname(dragSourcePath) === displayRootPath) &&
+          'bg-border',
+        isNativeDragOver && explorerView === 'files' && !nativeDropTargetDir && 'bg-border'
+      )}
+      ref={fileDropOwnerRef}
+      viewportRef={scrollRef}
+      viewportTabIndex={-1}
+      viewportClassName="h-full min-h-0 py-2"
+      onWheelCapture={handleWheelCapture}
+      onDragOverCapture={rootDragHandlers.onDragOverCapture}
+      onDragOver={rootDragHandlers.onDragOver}
+      onDragEnter={rootDragHandlers.onDragEnter}
+      onDragLeave={rootDragHandlers.onDragLeave}
+      onDrop={rootDragHandlers.onDrop}
+      onDragEnd={() => {
+        stopDragEdgeScroll()
+        setDropTargetDir(null)
+      }}
+      viewportProps={{
+        onContextMenuCapture: handleExplorerBackgroundContextMenuCapture,
+        onDoubleClick: handleExplorerBackgroundDoubleClick
+      }}
+    >
+      {treeError !== null &&
+        !isLoading &&
+        !hasNameFilter &&
+        displayRootPath &&
+        !wslHostsTurnedOff && (
+          <div className="px-2 py-1 text-xs text-muted-foreground" role="status">
+            {showTree && <p>{treeError}</p>}
+            <Button variant="ghost" size="xs" onClick={() => void tree.refreshDir(displayRootPath)}>
+              {translate('fileExplorer.root.retry', 'Retry')}
+            </Button>
+          </div>
         )}
-        ref={fileDropOwnerRef}
-        viewportRef={scrollRef}
-        viewportTabIndex={-1}
-        viewportClassName="h-full min-h-0 py-2"
-        onWheelCapture={handleWheelCapture}
-        onDragOverCapture={rootDragHandlers.onDragOverCapture}
-        onDragOver={rootDragHandlers.onDragOver}
-        onDragEnter={rootDragHandlers.onDragEnter}
-        onDragLeave={rootDragHandlers.onDragLeave}
-        onDrop={rootDragHandlers.onDrop}
-        onDragEnd={() => {
-          stopDragEdgeScroll()
-          setDropTargetDir(null)
-        }}
-        viewportProps={{
-          onContextMenuCapture: handleExplorerBackgroundContextMenuCapture,
-          onDoubleClick: handleExplorerBackgroundDoubleClick
-        }}
-      >
-        {treeError !== null &&
-          !isLoading &&
-          !hasNameFilter &&
-          displayRootPath &&
-          !wslHostsTurnedOff && (
-            <div className="px-2 py-1 text-xs text-muted-foreground" role="status">
-              {showTree && <p>{treeError}</p>}
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => void tree.refreshDir(displayRootPath)}
-              >
-                {translate('fileExplorer.root.retry', 'Retry')}
-              </Button>
-            </div>
-          )}
-        {!showTree && (
-          <FileExplorerTreeStatus
-            isLoading={isLoading}
-            error={hasError ? treeError : null}
-            isEmpty={isEmptyState && !isLoading && !hasError}
-            emptyMessage={emptyMessage}
-            scopedToFolder={!!displayRootPath && displayRootPath !== worktreePath}
-            wslHostsTurnedOff={wslHostsTurnedOff}
-          />
-        )}
-        {showTree && (
-          <FileExplorerVirtualRows
-            displayDepthOffset={getExplorerDisplayDepth(worktreePath, displayRootPath)}
-            virtualizer={virtualizer}
-            inlineInputIndex={inlineInputIndex}
-            rowProjection={rowProjection}
-            inlineInput={inlineInput}
-            handleInlineSubmit={handleInlineSubmit}
-            dismissInlineInput={dismissInlineInput}
-            folderStatusByRelativePath={folderStatusByRelativePath}
-            statusByRelativePath={statusByRelativePath}
-            ignoredByRelativePath={ignoredByRelativePath}
-            expanded={rowExpandedPaths}
-            canCollapseFolderSubtree={!hasNameFilter}
-            loadingDirPaths={loadingDirPaths}
-            selectedPaths={selectedPaths}
-            activeFileId={activeFileId}
-            flashingPath={flashingPath}
-            deleteShortcutLabel={deletion.deleteShortcutLabel}
-            connectionId={activeRepo?.connectionId ?? null}
-            sourceWorkspaceId={tree.sourceWorkspaceId}
-            dirCache={tree.dirCache}
-            runtimeDownloadContext={runtimeDownloadContext}
-            supportsFolderDownload={supportsFolderDownload}
-            canOpenInOrcaBrowser={canOpenWorkspaceFileBrowserForPath}
-            onClick={handleRowClick}
-            onDoubleClick={handleDoubleClick}
-            onViewFile={handleClick}
-            onContextMenuSelect={preserveSelectionForContextMenu}
-            onCopyPaths={copyPathsForNode}
-            onStartNew={startNew}
-            onStartRename={handleStartRename}
-            onDuplicate={handleDuplicate}
-            onAddFolderAsProject={handleAddFolderAsProject}
-            canAddFolderAsProject={(node) => canShowAddAsProjectAction(node, activeRepo)}
-            onOpenInTerminal={handleOpenInTerminal}
-            onRequestDelete={handleContextMenuDelete}
-            onCollapseFolderSubtree={handleCollapseFolderSubtree}
-            onFindInFolder={handleFindInFolder}
-            onMoveDrop={handleMoveDrop}
-            onDragTargetChange={setDropTargetDir}
-            onDragSourceChange={setDragSourcePath}
-            onDragExpandDir={hasNameFilter ? handleExpandNameFilterDir : handleDragExpandDir}
-            onNativeDragTargetChange={setNativeDropTargetDir}
-            onNativeDragExpandDir={
-              hasNameFilter ? handleExpandNameFilterDir : handleNativeDragExpandDir
-            }
-            dropTargetDir={dropTargetDir}
-            dragSourcePath={dragSourcePath}
-            nativeDropTargetDir={nativeDropTargetDir}
-          />
-        )}
-      </ScrollArea>
-      <FileExplorerMoveConfirmDialog
-        request={moveConfirmRequest}
-        onConfirm={confirmMove}
-        onCancel={cancelMove}
-      />
-    </>
+      {!showTree && (
+        <FileExplorerTreeStatus
+          isLoading={isLoading}
+          error={hasError ? treeError : null}
+          isEmpty={isEmptyState && !isLoading && !hasError}
+          emptyMessage={emptyMessage}
+          scopedToFolder={!!displayRootPath && displayRootPath !== worktreePath}
+          wslHostsTurnedOff={wslHostsTurnedOff}
+        />
+      )}
+      {showTree && (
+        <FileExplorerVirtualRows
+          displayDepthOffset={getExplorerDisplayDepth(worktreePath, displayRootPath)}
+          virtualizer={virtualizer}
+          inlineInputIndex={inlineInputIndex}
+          rowProjection={rowProjection}
+          inlineInput={inlineInput}
+          handleInlineSubmit={handleInlineSubmit}
+          dismissInlineInput={dismissInlineInput}
+          folderStatusByRelativePath={folderStatusByRelativePath}
+          statusByRelativePath={statusByRelativePath}
+          ignoredByRelativePath={ignoredByRelativePath}
+          expanded={rowExpandedPaths}
+          canCollapseFolderSubtree={!hasNameFilter}
+          loadingDirPaths={loadingDirPaths}
+          selectedPaths={selectedPaths}
+          activeFileId={activeFileId}
+          flashingPath={flashingPath}
+          deleteShortcutLabel={deletion.deleteShortcutLabel}
+          connectionId={activeRepo?.connectionId ?? null}
+          sourceWorkspaceId={tree.sourceWorkspaceId}
+          dirCache={tree.dirCache}
+          runtimeDownloadContext={runtimeDownloadContext}
+          supportsFolderDownload={supportsFolderDownload}
+          canOpenInOrcaBrowser={canOpenWorkspaceFileBrowserForPath}
+          onClick={handleRowClick}
+          onDoubleClick={handleDoubleClick}
+          onViewFile={handleClick}
+          onContextMenuSelect={preserveSelectionForContextMenu}
+          onCopyPaths={copyPathsForNode}
+          onStartNew={startNew}
+          onStartRename={handleStartRename}
+          onDuplicate={handleDuplicate}
+          onAddFolderAsProject={handleAddFolderAsProject}
+          canAddFolderAsProject={(node) => canShowAddAsProjectAction(node, activeRepo)}
+          onOpenInTerminal={handleOpenInTerminal}
+          onRequestDelete={handleContextMenuDelete}
+          onCollapseFolderSubtree={handleCollapseFolderSubtree}
+          onFindInFolder={handleFindInFolder}
+          onMoveDrop={handleMoveDrop}
+          onDragTargetChange={setDropTargetDir}
+          onDragSourceChange={setDragSourcePath}
+          onDragExpandDir={hasNameFilter ? handleExpandNameFilterDir : handleDragExpandDir}
+          onNativeDragTargetChange={setNativeDropTargetDir}
+          onNativeDragExpandDir={
+            hasNameFilter ? handleExpandNameFilterDir : handleNativeDragExpandDir
+          }
+          dropTargetDir={dropTargetDir}
+          dragSourcePath={dragSourcePath}
+          nativeDropTargetDir={nativeDropTargetDir}
+        />
+      )}
+    </ScrollArea>
   )
 }

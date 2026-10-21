@@ -3,12 +3,17 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
+import type { ConfirmationDialogOptions } from '@/components/confirmation-dialog-context'
 import { getDefaultSettings } from '../../../../shared/constants'
 import { useFileExplorerMoveDrop } from './useFileExplorerMoveDrop'
 
 const executeOpenEditorPathMove = vi.hoisted(() => vi.fn())
+const confirm = vi.hoisted(() => vi.fn<(options: ConfirmationDialogOptions) => Promise<boolean>>())
 
 vi.mock('@/lib/execute-open-editor-path-move', () => ({ executeOpenEditorPathMove }))
+vi.mock('@/components/confirmation-dialog-context', () => ({
+  useConfirmationDialog: () => confirm
+}))
 vi.mock('./fileExplorerUndoRedo', () => ({ commitFileExplorerOp: vi.fn() }))
 vi.mock('./file-explorer-operation-owner', () => ({
   captureFileExplorerOperationGuard: () => ({
@@ -21,6 +26,7 @@ const initialState = useAppStore.getInitialState()
 
 function setup(confirmExplorerDragAndDrop: boolean) {
   const updateSettings = vi.fn().mockResolvedValue(undefined)
+  const refreshDir = vi.fn().mockResolvedValue(undefined)
   useAppStore.setState({
     settings: { ...getDefaultSettings('/tmp'), confirmExplorerDragAndDrop },
     updateSettings
@@ -29,75 +35,71 @@ function setup(confirmExplorerDragAndDrop: boolean) {
     useFileExplorerMoveDrop({
       worktreePath: '/repo',
       activeWorktreeId: 'wt-1',
-      refreshDir: vi.fn().mockResolvedValue(undefined),
+      refreshDir,
       getOperationOwnerForPath: () => undefined,
       setDropTargetDir: vi.fn()
     })
   )
-  return { result, updateSettings }
+  return { handleMoveDrop: result.current, updateSettings, refreshDir }
+}
+
+async function drop(handleMoveDrop: (paths: string[], dir: string) => void, paths: string[]) {
+  await act(async () => handleMoveDrop(paths, '/repo/src'))
 }
 
 describe('useFileExplorerMoveDrop', () => {
   beforeEach(() => {
     executeOpenEditorPathMove.mockReset().mockResolvedValue(undefined)
+    confirm.mockReset()
   })
 
   afterEach(() => {
     useAppStore.setState(initialState, true)
   })
 
-  it('moves right away when confirmation is off', () => {
-    const { result } = setup(false)
-    act(() => result.current.handleMoveDrop(['/repo/a.ts', '/repo/b.ts'], '/repo/src'))
+  it('moves right away when confirmation is off', async () => {
+    const { handleMoveDrop } = setup(false)
+    await drop(handleMoveDrop, ['/repo/a.ts', '/repo/b.ts'])
 
-    expect(result.current.moveConfirmRequest).toBeNull()
+    expect(confirm).not.toHaveBeenCalled()
     expect(executeOpenEditorPathMove).toHaveBeenCalledTimes(2)
   })
 
-  it('asks once per drop and moves nothing until confirmed', () => {
-    const { result, updateSettings } = setup(true)
-    act(() => result.current.handleMoveDrop(['/repo/a.ts', '/repo/b.ts'], '/repo/src'))
+  it('asks once per drop, then moves and refreshes each folder once', async () => {
+    confirm.mockResolvedValue(true)
+    const { handleMoveDrop, refreshDir } = setup(true)
+    await drop(handleMoveDrop, ['/repo/a.ts', '/repo/b.ts'])
 
-    expect(result.current.moveConfirmRequest).toEqual({
-      worktreeId: 'wt-1',
-      sourcePaths: ['/repo/a.ts', '/repo/b.ts'],
-      destDir: '/repo/src'
-    })
-    expect(executeOpenEditorPathMove).not.toHaveBeenCalled()
-
-    act(() => result.current.confirmMove(false))
-
-    expect(result.current.moveConfirmRequest).toBeNull()
-    expect(executeOpenEditorPathMove).toHaveBeenCalledTimes(2)
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(confirm.mock.calls[0][0].title).toContain('following 2 files')
     expect(executeOpenEditorPathMove).toHaveBeenCalledWith(
       expect.objectContaining({ fromPath: '/repo/a.ts', toPath: '/repo/src/a.ts' })
     )
-    expect(updateSettings).not.toHaveBeenCalled()
+    expect(refreshDir.mock.calls.map(([dir]) => dir).sort()).toEqual(['/repo', '/repo/src'])
   })
 
-  it('turns confirmation off when "Do not ask me again" is checked', () => {
-    const { result, updateSettings } = setup(true)
-    act(() => result.current.handleMoveDrop(['/repo/a.ts'], '/repo/src'))
-    act(() => result.current.confirmMove(true))
+  it('moves nothing when the prompt is cancelled', async () => {
+    confirm.mockResolvedValue(false)
+    const { handleMoveDrop } = setup(true)
+    await drop(handleMoveDrop, ['/repo/a.ts'])
 
-    expect(updateSettings).toHaveBeenCalledWith({ confirmExplorerDragAndDrop: false })
-    expect(executeOpenEditorPathMove).toHaveBeenCalledTimes(1)
-  })
-
-  it('moves nothing on cancel', () => {
-    const { result } = setup(true)
-    act(() => result.current.handleMoveDrop(['/repo/a.ts'], '/repo/src'))
-    act(() => result.current.cancelMove())
-
-    expect(result.current.moveConfirmRequest).toBeNull()
     expect(executeOpenEditorPathMove).not.toHaveBeenCalled()
   })
 
-  it('does not ask when the drop would not move anything', () => {
-    const { result } = setup(true)
-    act(() => result.current.handleMoveDrop(['/repo/src/a.ts'], '/repo/src'))
+  it('turns confirmation off through "Do not ask me again"', async () => {
+    confirm.mockResolvedValue(true)
+    const { handleMoveDrop, updateSettings } = setup(true)
+    await drop(handleMoveDrop, ['/repo/a.ts'])
 
-    expect(result.current.moveConfirmRequest).toBeNull()
+    confirm.mock.calls[0][0].dontAskAgain?.onConfirmed()
+    expect(updateSettings).toHaveBeenCalledWith({ confirmExplorerDragAndDrop: false })
+  })
+
+  it('does not ask when the drop would not move anything', async () => {
+    const { handleMoveDrop } = setup(true)
+    await drop(handleMoveDrop, ['/repo/src/a.ts'])
+
+    expect(confirm).not.toHaveBeenCalled()
     expect(executeOpenEditorPathMove).not.toHaveBeenCalled()
   })
 })

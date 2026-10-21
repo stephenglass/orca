@@ -1,4 +1,4 @@
-import type { Page } from '@stablyai/playwright-test'
+import type { Locator, Page } from '@stablyai/playwright-test'
 import { expect } from '@stablyai/playwright-test'
 
 /** Open the right sidebar file explorer and wait for store state to match. */
@@ -80,4 +80,11 @@ export async function clickFileInExplorer(
 
     return null
   }, candidates)
+}
+
+/** The explorer row whose displayed name is exactly `name`. */
+export function explorerRowByName(page: Page, name: string): Locator {
+  return page.locator('[data-orca-explorer-shell] [data-file-explorer-row]').filter({
+    has: page.locator('[data-file-explorer-row-name]').getByText(name, { exact: true })
+  })
 }
